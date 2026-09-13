@@ -6,7 +6,7 @@ const port = process.env.PORT || 3000;
 
 app.get("/", (req, res) => {
   res.json({
-    message: "Hello from the Node.js app!",
+    message: "Hello from the nti app!",
     nodeVersion: process.version,
     hostname: os.hostname(),
   });
