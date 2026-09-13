@@ -8,21 +8,15 @@ pipeline {
     environment {
         APP_NAME = 'nodejs-docker-exercise'
         DOCKER_CREDENTIALS = 'docker'
-        KUBECONFIG_CREDENTIAL = 'kubeconfig'
     }
     stages {
         stage('Prepare environment') {
             steps {
                 checkout scm
                 script {
-                    def mapping = [dev: 'dev', stg: 'stg', prod: 'prod', main: 'prod']
-                    if (!mapping.containsKey(env.BRANCH_NAME)) {
-                        error("Branch '${env.BRANCH_NAME}' cannot deploy")
-                    }
-                    env.DEPLOY_ENV = mapping[env.BRANCH_NAME]
-                    env.K8S_NAMESPACE = "node-app-${env.DEPLOY_ENV}"
+                    def branchTag = env.BRANCH_NAME.replaceAll('[^A-Za-z0-9_.-]', '-')
                     env.SHORT_COMMIT = sh(script: 'git rev-parse --short=8 HEAD', returnStdout: true).trim()
-                    env.IMAGE_TAG = "${env.DEPLOY_ENV}-${env.BUILD_NUMBER}-${env.SHORT_COMMIT}"
+                    env.IMAGE_TAG = "${branchTag}-${env.BUILD_NUMBER}-${env.SHORT_COMMIT}"
                 }
             }
         }
@@ -56,33 +50,12 @@ pipeline {
                         docker tag "$APP_NAME:$IMAGE_TAG" "$DOCKER_USERNAME/$APP_NAME:$IMAGE_TAG"
                         docker push "$DOCKER_USERNAME/$APP_NAME:$IMAGE_TAG"
                         docker logout
-                        printf '%s' "$DOCKER_USERNAME/$APP_NAME:$IMAGE_TAG" > image.txt
-                    '''
-                    script { env.DEPLOY_IMAGE = readFile('image.txt').trim() }
-                }
-            }
-        }
-        stage('Approve deployment') {
-            steps {
-                input(message: "Deploy ${env.DEPLOY_IMAGE} to ${env.DEPLOY_ENV} (${env.K8S_NAMESPACE})?", ok: 'Approve and deploy', submitterParameter: 'APPROVED_BY')
-            }
-        }
-        stage('Deploy to remote Kubernetes') {
-            steps {
-                withCredentials([file(credentialsId: env.KUBECONFIG_CREDENTIAL, variable: 'KUBECONFIG')]) {
-                    sh '''
-                        set -eu
-                        kubectl get namespace "$K8S_NAMESPACE" >/dev/null 2>&1 || kubectl create namespace "$K8S_NAMESPACE"
-                        kubectl kustomize "k8s/overlays/$DEPLOY_ENV" | sed "s|IMAGE_PLACEHOLDER|$DEPLOY_IMAGE|g" > deployment.rendered.yaml
-                        kubectl -n "$K8S_NAMESPACE" apply -f deployment.rendered.yaml
-                        kubectl -n "$K8S_NAMESPACE" rollout status deployment/node-app --timeout=180s
                     '''
                 }
             }
         }
     }
     post {
-        aborted { echo 'Deployment aborted; Kubernetes was not changed.' }
         always {
             sh 'docker image rm "$APP_NAME:$IMAGE_TAG" >/dev/null 2>&1 || true'
             deleteDir()

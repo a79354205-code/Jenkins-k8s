@@ -1,35 +1,35 @@
-# Node.js multibranch Docker and Kubernetes pipeline
+# Node.js Docker pipeline
 
-This repository contains the supplied Express application and only the files
-required to build, publish, and deploy it through Jenkins and Kubernetes.
+This repository contains the supplied Express application and the files needed
+to build, test, and publish its Docker image through Jenkins.
 
-## Environments
+## Application
 
-| Branch | Namespace | Replicas | Service |
-|---|---|---:|---|
-| `dev` | `node-app-dev` | 1 | ClusterIP |
-| `stg` | `node-app-stg` | 2 | ClusterIP |
-| `prod` | `node-app-prod` | 3 | LoadBalancer |
-| `main` | `node-app-prod` | 3 | LoadBalancer |
+The service listens on port `3000` and provides:
 
-`main` is supported as a production alias. Prefer the `prod` branch for new
-production work.
+- `GET /` — application information
+- `GET /health` — container health status
 
 ## Jenkins requirements
 
-The Jenkins agent needs Docker, `curl`, and `kubectl`. Configure these Jenkins
-credentials:
+The Jenkins agent needs Docker and `curl`. Add a Jenkins username/password
+credential named `docker`, using your Docker Hub username and access token.
 
-- `docker`: Docker Hub username and access token
-- `kubeconfig`: remote Kubernetes kubeconfig stored as a Secret File
-
-Create a Multibranch Pipeline for this repository and include the `dev`, `stg`,
-and `prod` branches. Each run performs:
+Create a Multibranch Pipeline for this repository. Each branch run performs:
 
 ```text
-checkout -> build -> health smoke test -> Docker Hub push -> approval
--> Kubernetes apply -> rollout verification
+checkout -> Docker build -> container health test -> Docker Hub push
 ```
 
-The application listens on port `3000`. Its health endpoint is `/health`.
-Aborting at the approval step leaves Kubernetes unchanged.
+Images are published as:
+
+```text
+<docker-username>/nodejs-docker-exercise:<branch>-<build>-<commit>
+```
+
+To run the application locally:
+
+```bash
+docker build -t nodejs-docker-exercise .
+docker run --rm -p 3000:3000 nodejs-docker-exercise
+```
