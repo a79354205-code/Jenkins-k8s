@@ -4,7 +4,8 @@
   "description": "Simple Express app for a Docker training exercise",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "test": "node --check index.js"
   },
   "dependencies": {
     "express": "^4.19.2"

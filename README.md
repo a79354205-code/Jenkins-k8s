@@ -14,6 +14,8 @@ The service listens on port `3000` and provides:
 
 The Jenkins agent needs Docker and `curl`. Add a Jenkins username/password
 credential named `docker`, using your Docker Hub username and access token.
+The credential must have permission to push to the
+`abdelrahman12345648484` Docker Hub namespace.
 
 Create a Multibranch Pipeline for this repository. Each branch run performs:
 
@@ -24,7 +26,7 @@ checkout -> Docker build -> container health test -> Docker Hub push
 Images are published as:
 
 ```text
-<docker-username>/nodejs-docker-exercise:<branch>-<build>-<commit>
+abdelrahman12345648484/nodejs-docker-exercise:<branch>-<build>-<commit>
 ```
 
 To run the application locally:
